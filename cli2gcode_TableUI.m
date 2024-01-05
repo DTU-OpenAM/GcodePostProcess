@@ -9,20 +9,21 @@ else
 end
 
 
-[processParameters, machineParameters, label_matches] = custom_cli_input(inputFile);
+[processParameters, machineParameters, label_matches, mirrorX, mirrorY] = custom_cli_input(inputFile);
 
-gcode = processcli(inputFile, processParameters, machineParameters, label_matches);
+gcode = processcli(inputFile, processParameters, machineParameters, label_matches, mirrorX, mirrorY);
 
 
 
 % Save Gcode to a file
-    fileID = fopen('output.g', 'w');
+    fileID_clean = extractBefore(inputFile, ".");
+    fileID = fopen(convertCharsToStrings(fileID_clean) + '.g', 'w');
     fprintf(fileID, '%s', gcode);
     fclose(fileID);
     
 
 
-    function gcode_str = processcli(inputFile, processParameters, machineParameters, label_matches)
+    function gcode_str = processcli(inputFile, processParameters, machineParameters, label_matches, mirrorX, mirrorY)
     cli_data = fileread(inputFile);
 
     % Extract the scalar multiplier from the CLI file
@@ -48,6 +49,21 @@ gcode = processcli(inputFile, processParameters, machineParameters, label_matche
 
     % Variable to keep track of the last label processed
     lastLabelNumber = 1;
+
+    mirrorHandleX = 0;
+    mirrorHandleY = 0;
+
+    if mirrorX
+        mirrorHandleX = -1;  % Apply mirroring to the X positions
+    else
+        mirrorHandleX = 1;
+    end
+
+    if mirrorY
+        mirrorHandleY = -1;  % Apply mirroring to the Y positions
+    else
+        mirrorHandleY = 1;
+    end
 
 
     % Convert parameter to cell array
@@ -111,8 +127,8 @@ gcode = processcli(inputFile, processParameters, machineParameters, label_matche
         elseif startsWith(seg{1}, 'POLYLINE/')
             data = str2double(strsplit(seg{1}(10:end), ','));
             object_number = data(1);
-            x_values = data(4:2:end-1) * scalar_multiplier;
-            y_values = data(5:2:end) * scalar_multiplier;
+            x_values = data(4:2:end-1) * scalar_multiplier * mirrorHandleX;
+            y_values = data(5:2:end) * scalar_multiplier * mirrorHandleY;
             
             if object_number ~= lastLabelNumber
                 % Only add the polyline comment if the label number has changed
@@ -137,8 +153,8 @@ gcode = processcli(inputFile, processParameters, machineParameters, label_matche
         elseif startsWith(seg{1}, 'HATCHES/')
             data = str2double(strsplit(seg{1}(9:end), ','));
             object_number = data(1);
-            x_values = data(3:2:end-1) * scalar_multiplier;
-            y_values = data(4:2:end) * scalar_multiplier;
+            x_values = data(3:2:end-1) * scalar_multiplier * mirrorHandleX;
+            y_values = data(4:2:end) * scalar_multiplier * mirrorHandleY;
 
             if object_number ~= lastLabelNumber
 
@@ -178,7 +194,7 @@ end
 
 
 
-    function [processParameters, machineParameters, label_matches] = custom_cli_input(cli_filename)
+    function [processParameters, machineParameters, label_matches, mirrorX, mirrorY] = custom_cli_input(cli_filename)
     % Read file content
     file_content = fileread(cli_filename);
 
@@ -209,8 +225,8 @@ end
     for i = 1:numel(label_matches)
         tableData{i, 1} = i+1;
         tableData{i, 2} = label_matches{i}{2}; % Label Name
-        tableData{i, 3} = 100; % Default Power
-        tableData{i, 4} = 1000; % Default Feedrate
+        tableData{i, 3} = 190; % Default Power
+        tableData{i, 4} = 750; % Default Feedrate
     end
 
     % Create the table in the "Process Parameters" tab
@@ -250,6 +266,14 @@ end
     uilabel(machineTab, 'Text', 'Layer height [mm]:', 'Position', [10, 60, 150, 22]);
     layerHeightField = uieditfield(machineTab, 'numeric', 'Position', [170, 60, 100, 22], 'Value', 0.05);
 
+    % Checkbox for "Mirror X"
+    mirrorXCheckbox = uicheckbox(machineTab, 'Text', 'Mirror X', 'Position', [10, 200, 100, 22]);
+    mirrorXCheckbox.Value = true;  % Set "Mirror X" to be checked by default
+    
+    % Checkbox for "Mirror Y"
+    mirrorYCheckbox = uicheckbox(machineTab, 'Text', 'Mirror Y', 'Position', [10, 170, 100, 22]);
+
+
     % Create submit button
     submitButton = uibutton(fig, 'push', 'Text', 'Submit', 'Position', [300, 10, 100, 30], ...
                             'ButtonPushedFcn', @(btn, event) onSubmit());
@@ -271,6 +295,9 @@ end
                              'Dispenser2', dispenser2Field.Value, 'Pattern2', pattern2Field.Value; 
                              'MultiMat', 0, 'LayerHeight', layerHeightField.Value, 
                              };
+        % Retrieve the checkbox states
+        mirrorX = mirrorXCheckbox.Value;
+        mirrorY = mirrorYCheckbox.Value;
 
         % Close the figure
         delete(fig);
