@@ -21,5 +21,5 @@ the "LOOP ONE No Build Zone.3MF” that you saved previously.
 Result: Shows the three screw locations and moves the origin to the middle of
 the build plate for easier alignment.
 
-<p align="center"><img src="misc/NetfabbIntroPicture.png" height="300" alt="Netfabb screenshot" /></p>
+<p align="center"><img src="misc/NetfabbIntro_v0.jpg" height="300" alt="Netfabb screenshot" /></p>
 <h3 align="center">Netfabb LOOP build plate</h3>
